@@ -16,7 +16,7 @@ in the [Working with command-line compiler](command-line.md) tutorial.
 Kotlin compilers have a number of options for tailoring the compiling process. 
 
 The Gradle DSL allows comprehensive 
-configuration of compiler options. It is available for [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/multiplatform-dsl-reference.html) and [JVM/Android](#target-the-jvm) projects.
+configuration of compiler options. It is available for [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/multiplatform-dsl-reference.html#compiler options) and [JVM/Android](#target-the-jvm) projects.
 
 With the Gradle DSL, you can configure compiler options within the build script at three levels: 
 * **[Extension level](#extension-level)**, in the `kotlin {}` block for all targets and shared source sets.
@@ -99,7 +99,7 @@ kotlin {
         val main by compilations.getting {
             compileTaskProvider.configure {
                 compilerOptions {
-
+                    optIn.add("kotlin.RequiresOptIn")
                 }
             }
         }
@@ -136,6 +136,120 @@ tasks.named('compileKotlin', org.jetbrains.kotlin.gradle.tasks.KotlinCompilation
 </tab>
 </tabs>
 
+### Migrate from `kotlinOptions{}` to `compilerOptions{}` {collapsible="true"}
+
+Before Kotlin 2.2.0, you could configure compiler options using the `kotlinOptions{}` block. Since the `kotlinOptions{}`
+block is deprecated in Kotlin 2.2.0, this section provides guidance and recommendations for migrating your build
+scripts to use the `compilerOptions{}` block instead.
+
+#### Centralize compiler options and use types
+
+Whenever possible, configure compiler options at the [extension level](#extension-level), and override them for specific tasks
+at [compilation unit level](#compilation-unit-level).
+
+To make your configuration safer and more expressive, avoid using raw strings and prefer strongly typed values. For example, if you have:
+
+```kotlin
+plugins {
+    kotlin("jvm") version "2.2.0"
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "17"
+        languageVersion = "2.2"
+        apiVersion = "2.2"
+    }
+}
+```
+
+After migration, this becomes:
+
+```kotlin
+plugins {
+    kotlin("jvm") version "2.2.0"
+}
+
+kotlin {
+    // Extension level
+    compilerOptions {
+        jvmTarget = JvmTarget.fromTarget("17")
+        languageVersion = KotlinVersion.fromVersion("2.2")
+        apiVersion = KotlinVersion.fromVersion("2.2")
+    }
+}
+
+// Override at compilation unit level
+tasks.named<KotlinJvmCompile>("compileKotlin"){
+    compilerOptions {
+        apiVersion = KotlinVersion.fromVersion("2.0")
+    }
+}
+```
+
+#### Migrate away from `android.kotlinOptions`
+
+If your build script previously used `android.kotlinOptions`, migrate to `kotlin.compilerOptions` instead. Either at
+the extension level or the target level.
+
+For example, if you have:
+
+```kotlin
+plugins {
+    id("com.android.application")
+    kotlin("android")
+}
+
+android {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+```
+
+Update it to:
+
+```kotlin
+plugins {
+    id("com.android.application")
+    kotlin("android")
+}
+
+kotlin {
+    androidTarget {
+        // Target level
+        compilerOptions {
+            jvmTarget = JvmTarget.fromTarget("17")
+        }
+    }
+}
+```
+
+#### Migrate `freeCompilerArgs`
+
+* Replace all `+=` operations with `add()` or `addAll()` functions.
+* If you use the `-opt-in` compiler option, check whether a specialized DSL already is available in the [KGP API reference](https://kotlinlang.org/api/kotlin-gradle-plugin/kotlin-gradle-plugin-api/) and use that instead.
+
+For example, if you have:
+
+```kotlin
+kotlinOptions {
+    freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
+    freeCompilerArgs += listOf("-Xcontext-receivers", "-Xinline-classes")
+}
+```
+
+Migrate to:
+
+```kotlin
+kotlin {
+    compilerOptions {
+        optIn.add("kotlin.RequiresOptIn")
+        freeCompilerArgs.addAll(listOf("-Xcontext-receivers", "-Xinline-classes"))
+    }
+}
+```
+
 ## Target the JVM
 
 [As explained before](#how-to-define-options), you can define compiler options for your JVM/Android projects at the extension, target, and compilation unit levels (tasks).
@@ -148,7 +262,6 @@ and searching for `compile*Kotlin` task names in the `Other tasks` group.
 
 Some important details to be aware of:
 
-* The `android.kotlinOptions` and `kotlin.compilerOptions` configuration blocks override each other. The last (lowest) block takes effect.
 * `kotlin.compilerOptions` configures every Kotlin compilation task in the project.
 * You can override the configuration applied by `kotlin.compilerOptions` DSL using the `tasks.named<KotlinJvmCompile>("compileKotlin") { }`
   (or `tasks.withType<KotlinJvmCompile>().configureEach { }`) approach.
