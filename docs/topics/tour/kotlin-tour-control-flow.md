@@ -88,9 +88,9 @@ fun main() {
     val obj = "Hello"
 
     when (obj) {
-        // Checks whether obj equals to "1"
+        // Checks whether obj equals "1"
         "1" -> println("One")
-        // Checks whether obj equals to "Hello"
+        // Checks whether obj equals "Hello"
         "Hello" -> println("Greeting")
         // Default statement
         else -> println("Unknown")     
