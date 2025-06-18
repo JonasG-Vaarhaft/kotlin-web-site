@@ -192,7 +192,7 @@ tasks.named<KotlinJvmCompile>("compileKotlin"){
 If your build script previously used `android.kotlinOptions`, migrate to `kotlin.compilerOptions` instead. Either at
 the extension level or the target level.
 
-For example, if you have:
+For example, if you have an Android project:
 
 ```kotlin
 plugins {
@@ -211,13 +211,44 @@ Update it to:
 
 ```kotlin
 plugins {
+  id("com.android.application")
+  kotlin("android")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.fromTarget("17")
+    }
+}
+```
+
+And for example, if you have a Kotlin Multiplatform project with an Android target:
+
+```kotlin
+plugins {
+    kotlin("multiplatform")
     id("com.android.application")
-    kotlin("android")
 }
 
 kotlin {
     androidTarget {
-        // Target level
+        compilations.all {
+            kotlinOptions.jvmTarget = "17"
+        }
+    }
+}
+```
+
+Update it to:
+
+```kotlin
+plugins {
+    kotlin("multiplatform")
+    id("com.android.application")
+}
+
+kotlin {
+    androidTarget {
         compilerOptions {
             jvmTarget = JvmTarget.fromTarget("17")
         }
@@ -229,13 +260,15 @@ kotlin {
 
 * Replace all `+=` operations with `add()` or `addAll()` functions.
 * If you use the `-opt-in` compiler option, check whether a specialized DSL already is available in the [KGP API reference](https://kotlinlang.org/api/kotlin-gradle-plugin/kotlin-gradle-plugin-api/) and use that instead.
+* Migrate any use of the `-progressive` compiler option to use the dedicated DSL: `progressiveMode.set(true)`.
+* Migrate any use of the `-Xjvm-default-all` compiler option to [use the dedicated DSL](gradle-compiler-options.md#attributes-specific-to-jvm): `jvmDefault.set()`.
 
 For example, if you have:
 
 ```kotlin
 kotlinOptions {
     freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
-    freeCompilerArgs += listOf("-Xcontext-receivers", "-Xinline-classes")
+    freeCompilerArgs += listOf("-Xcontext-receivers", "-Xinline-classes", "-progressive", "-Xjvm-default=all")
 }
 ```
 
@@ -246,6 +279,8 @@ kotlin {
     compilerOptions {
         optIn.add("kotlin.RequiresOptIn")
         freeCompilerArgs.addAll(listOf("-Xcontext-receivers", "-Xinline-classes"))
+        progressiveMode.set(true)
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
     }
 }
 ```
