@@ -140,7 +140,11 @@ tasks.named('compileKotlin', org.jetbrains.kotlin.gradle.tasks.KotlinCompilation
 
 Before Kotlin 2.2.0, you could configure compiler options using the `kotlinOptions{}` block. Since the `kotlinOptions{}`
 block is deprecated in Kotlin 2.2.0, this section provides guidance and recommendations for migrating your build
-scripts to use the `compilerOptions{}` block instead.
+scripts to use the `compilerOptions{}` block instead:
+
+* [Centralize compiler options and use types](#centralize-compiler-options-and-use-types)
+* [Migrate away from `android.kotlinOptions`](#migrate-away-from-android-kotlinoptions)
+* [Migrate `freeCompilerArgs`](#migrate-freecompilerargs)
 
 #### Centralize compiler options and use types
 
@@ -148,6 +152,9 @@ Whenever possible, configure compiler options at the [extension level](#extensio
 at [compilation unit level](#compilation-unit-level).
 
 To make your configuration safer and more expressive, avoid using raw strings and prefer strongly typed values. For example, if you have:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 plugins {
@@ -163,7 +170,30 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '17'
+        languageVersion = '2.2'
+        apiVersion = '2.2'
+    }
+}
+```
+
+</tab>
+</tabs>
+
 After migration, this becomes:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 plugins {
@@ -187,12 +217,41 @@ tasks.named<KotlinJvmCompile>("compileKotlin"){
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget("17")
+        languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.fromVersion("2.2")
+        apiVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.fromVersion("2.2")
+    }
+}
+
+tasks.named("compileKotlin", org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile).configure {
+    compilerOptions {
+        apiVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.fromVersion("2.0")
+    }
+}
+```
+
+</tab>
+</tabs>
+
 #### Migrate away from `android.kotlinOptions`
 
 If your build script previously used `android.kotlinOptions`, migrate to `kotlin.compilerOptions` instead. Either at
 the extension level or the target level.
 
 For example, if you have an Android project:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 plugins {
@@ -207,7 +266,28 @@ android {
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+```
+</tab>
+</tabs>
+
 Update it to:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 plugins {
@@ -222,7 +302,29 @@ kotlin {
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget("17")
+    }
+}
+```
+
+</tab>
+</tabs>
+
 And for example, if you have a Kotlin Multiplatform project with an Android target:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 plugins {
@@ -239,7 +341,33 @@ kotlin {
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform'
+    id 'com.android.application'
+}
+
+kotlin {
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = '17'
+            }
+        }
+    }
+}
+```
+
+</tab>
+</tabs>
+
 Update it to:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 plugins {
@@ -256,6 +384,27 @@ kotlin {
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform'
+    id 'com.android.application'
+}
+
+kotlin {
+    androidTarget {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget("17")
+        }
+    }
+}
+```
+
+</tab>
+</tabs>
+
 #### Migrate `freeCompilerArgs`
 
 * Replace all `+=` operations with `add()` or `addAll()` functions.
@@ -265,6 +414,9 @@ kotlin {
 
 For example, if you have:
 
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
+
 ```kotlin
 kotlinOptions {
     freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
@@ -272,7 +424,23 @@ kotlinOptions {
 }
 ```
 
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+kotlinOptions {
+    freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
+    freeCompilerArgs += ["-Xcontext-receivers", "-Xinline-classes", "-progressive", "-Xjvm-default=all"]
+}
+```
+
+</tab>
+</tabs>
+
 Migrate to:
+
+<tabs group="build-script">
+<tab title="Kotlin" group-key="kotlin">
 
 ```kotlin
 kotlin {
@@ -284,6 +452,23 @@ kotlin {
     }
 }
 ```
+
+</tab>
+<tab title="Groovy" group-key="groovy">
+
+```kotlin
+kotlin {
+    compilerOptions {
+        optIn.add("kotlin.RequiresOptIn")
+        freeCompilerArgs.addAll(["-Xcontext-receivers", "-Xinline-classes"])
+        progressiveMode.set(true)
+        jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
+    }
+}
+```
+
+</tab>
+</tabs>
 
 ## Target the JVM
 
